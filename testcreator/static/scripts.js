@@ -43,7 +43,6 @@ var writeToFile = function(vfolder, vfile) {
             vfile: vfile
         },
         success: function() {
-            console.log("hello");
             $('#write').html('Success!');
         }
     });
