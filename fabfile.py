@@ -1,15 +1,13 @@
-from fabric.operations import run, get, local
+from fabric.operations import local
 
 remotePath = '/home/guest/videos/'
-localPath   = 'tests/videos'
+localPath = 'tests/videos'
 
 
-def get_videos():
-    local('rsync -avz -e "ssh -p 55022" --exclude "*.json" guest@cvm-g1436217.doc.ic.ac.uk:' 
-                                                             + remotePath + ' ' + localPath)
+def fetch():
+    local('rsync -avz -e "ssh -p 55022" --exclude "*.json" guest@cvm-g1436217.doc.ic.ac.uk:'
+          + remotePath + ' ' + localPath)
 
 
-def remove_videos():
-    local('cd tests')
-    local('find . -name "*.avi" -type f -delete')
-    local('find . -name "*.mp4" -type f -delete')
+def clean():
+    local('find tests/videos/ \( -name "*.avi" -o -name "*.mp4" \) -type f -delete')
