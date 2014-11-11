@@ -1,0 +1,19 @@
+<html>
+    <head>
+        <title>Test Creator</title>
+        <script type="text/javascript" src="{{url_for('static', filename='scripts.js')}}"></script>
+        <script type="text/javascript" src="{{url_for('static', filename='components/jquery/dist/jquery.min.js')}}"></script>
+        <link rel="stylesheet" type="text/css" href="{{url_for('static', filename='style.css')}}">
+    </head>
+    <body>
+        <video id="vid" controls>
+        <source src="{{url_for('static', filename=vfolder+vfile+'.mp4')}}" type="video/mp4" />
+        </video>
+        <canvas id="canv"></canvas>
+        <div id="data">
+            <h2>Generated data</h2>
+            <button id="write" onclick="writeToFile('{{vfolder}}', '{{vfile}}')">Write to file {{vfolder}}/{{vfile}}.json</button>
+            <span id="generated"></span>
+        </div>
+    </body>
+</html

@@ -1,0 +1,21 @@
+{
+  "name": "testcreator",
+  "version": "0.0.0",
+  "homepage": "https://github.com/JoelOtter/ic-peopletracking",
+  "authors": [
+    "Joel Auterson <joel.auterson@googlemail.com>"
+  ],
+  "description": "Simple tool to create tests for our people tracking system",
+  "license": "MIT",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "jquery": "~2.1.1"
+  }
+}

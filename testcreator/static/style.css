@@ -1,0 +1,11 @@
+#vid, #canv {
+    position: absolute;
+    top: 10;
+    left: 10;
+}
+
+#data {
+    position: absolute;
+    top: 500;
+    left: 10;
+}
