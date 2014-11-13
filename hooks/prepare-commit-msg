@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# Append ghi output to the commit message
+if hash ghi 2>/dev/null;
+then
+  ghi | sed 's/^ \+\([0-9]\+\)/#\tissue: #\1:\t/' >> $1
+fi

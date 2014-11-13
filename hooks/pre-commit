@@ -1,0 +1,17 @@
+#!/bin/bash
+
+echo "Checking code style..."
+
+(shovel style.pep8 \
+  && shovel style.jslint) || (
+
+exec < /dev/tty
+
+echo "You have style violations!!!"
+echo "Do you wish to continue with your commit regardless? [yn]:"
+
+read yn
+
+[ "$yn" = "y" ] && exit 0 || exit -1
+
+)

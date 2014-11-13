@@ -33,7 +33,7 @@ def load_video_capture(video_file):
 
 def display_frames(video_capture):
 
-    wait_per_frame = int(1000/get_fps(video_capture))
+    wait_per_frame = int(1000 / get_fps(video_capture))
 
     # Loop through each frame.
     for i in xrange(get_num_frames(video_capture)):
