@@ -1,17 +1,17 @@
 import os
-from subprocess import call
+import re
+from subprocess import call, check_output
 from shovel import task
 
 VM_CONF = {
     'host': 'cvm-g1436217.doc.ic.ac.uk',
     'user': 'guest',
     'port': 55022,
-    'pass': os.environ['PEOPLE_TRACKER_VM_PASSWORD'],
     'videoPath': '/home/guest/videos'
 }
 
 TEST_CONF = {
-    'videoPath': os.path.join(os.getcwd(), 'tests/videos')
+    'videoPath': os.path.join(os.getcwd(), 'tests/videos').replace(' ', '\ ')
 }
 
 
@@ -19,6 +19,10 @@ TEST_CONF = {
 def fetch_videos():
 
     '''fetches videos from the VM host'''
+
+    rsyncVersion = re.match('.*version\s+([^\s]+)', check_output(['rsync', '--version'])).group(1)
+    if rsyncVersion < '3.0.0':
+        raise Exception('Rsync version must be greater than 3.0.0')
 
     call(
         (
@@ -35,7 +39,8 @@ def clean():
 
     '''removes all videos from test directory'''
 
-    junkExtensions = open(os.path.join(TEST_CONF['videoPath'], '.gitignore')).read().splitlines()
+    ignorePatterns = open(os.path.join(TEST_CONF['videoPath'], '.gitignore')).read().splitlines()
+    junkExtensions = filter(lambda ignore: bool(re.match('\*\.[^\.]+$', ignore)), ignorePatterns)
     findCriteria = ' -o '.join('-name "{ext}"'.format(ext=ext) for ext in junkExtensions)
 
     print 'Removing all test files matching:', junkExtensions

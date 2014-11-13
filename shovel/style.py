@@ -9,7 +9,7 @@ def pep8():
 
     success = os.system('pep8') == 0
     if not success:
-        raise 'pep8 style check failed'
+        raise Exception('pep8 style check failed')
 
 
 @task
@@ -24,4 +24,5 @@ def jslint():
 
     if not success:
         print "\n"  # clear for jslint output
-        raise 'jslint style check failed'
+        raise Exception('jslint style check failed')
+
