@@ -11,9 +11,10 @@
         </video>
         <canvas id="canv"></canvas>
         <div id="data">
+            Width: <input type="text" id="width" value="100" onchange="setRectWidth(this.value)"> Height: <input type="text" id="height" value="300" onchange="setRectHeight(this.value)"><button id="startvideo" onClick="playVid()">Start video (spacebar)</button>
             <h2>Generated data</h2>
             <button id="write" onclick="writeToFile('{{vfolder}}', '{{vfile}}')">Write to file {{vfolder}}/{{vfile}}.json</button>
             <span id="generated"></span>
         </div>
     </body>
-</html
+</html>
