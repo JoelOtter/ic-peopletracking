@@ -7,11 +7,14 @@ VM_CONF = {
     'host': 'cvm-g1436217.doc.ic.ac.uk',
     'user': 'guest',
     'port': 55022,
-    'videoPath': '/home/guest/videos'
+    'videoPath': '/home/guest/videos/'
 }
 
+videoPath = os.path.join(os.getcwd(), 'tests/videos')
+
 TEST_CONF = {
-    'videoPath': os.path.join(os.getcwd(), 'tests/videos').replace(' ', '\ ')
+    'videoPath': videoPath,
+    'escapedVideoPath': videoPath.replace(' ', r'\ ')
 }
 
 
@@ -29,7 +32,7 @@ def fetch_videos():
             "rsync -avz -e \"ssh -p {port}\" "
             "--exclude \"*.json\" "
             "{user}@{host}:{videoPath} {localPath}"
-        ).format(localPath=TEST_CONF['videoPath'], **VM_CONF),
+        ).format(localPath=TEST_CONF['escapedVideoPath'], **VM_CONF),
         shell=True
     )
 
@@ -39,6 +42,8 @@ def clean():
 
     '''removes all videos from test directory'''
 
+    escapedVideoPath = TEST_CONF['videoPath'].replace(' ', '\ ')
+
     ignorePatterns = open(os.path.join(TEST_CONF['videoPath'], '.gitignore')).read().splitlines()
     junkExtensions = filter(lambda ignore: bool(re.match('\*\.[^\.]+$', ignore)), ignorePatterns)
     findCriteria = ' -o '.join('-name "{ext}"'.format(ext=ext) for ext in junkExtensions)
@@ -46,8 +51,8 @@ def clean():
     print 'Removing all test files matching:', junkExtensions
 
     findCommand = (
-        "find {videoPath} \( {findCriteria} \) -type f "
+        "find {escapedVideoPath} \( {findCriteria} \) -type f "
     ).format(findCriteria=findCriteria, **TEST_CONF) + '-exec rm -vf {} \;'
 
-    call(findCommand, shell=True)
+    print os.system(findCommand)
 
