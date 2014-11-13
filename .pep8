@@ -1,0 +1,4 @@
+[pep8]
+ignore = W391
+max-line-length = 100
+exclude = env
