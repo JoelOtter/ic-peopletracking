@@ -1,9 +1,6 @@
 var FRAMERATE = 25;
 
-var vid = null;
-var canvas = null;
-var ctx = null;
-var gen = null;
+var vid, canvas, ctx, gen = null;
 var recentFrame = 0;
 var allframes = [];
 var vidplaying = false;
@@ -78,7 +75,7 @@ var setRectHeight = function(val) {
     rectHeight = parseFloat(val);
 };
 
-window.onload = function() {
+$(document).ready(function() {
     vid = $('#vid')[0];
     canvas = $('#canv')[0];
     gen = $('#generated')[0];
@@ -108,4 +105,4 @@ window.onload = function() {
     });
     $('#width').trigger('change');
     $('#height').trigger('change');
-};
+});
