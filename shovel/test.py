@@ -42,8 +42,6 @@ def clean():
 
     '''removes all videos from test directory'''
 
-    escapedVideoPath = TEST_CONF['videoPath'].replace(' ', '\ ')
-
     ignorePatterns = open(os.path.join(TEST_CONF['videoPath'], '.gitignore')).read().splitlines()
     junkExtensions = filter(lambda ignore: bool(re.match('\*\.[^\.]+$', ignore)), ignorePatterns)
     findCriteria = ' -o '.join('-name "{ext}"'.format(ext=ext) for ext in junkExtensions)
