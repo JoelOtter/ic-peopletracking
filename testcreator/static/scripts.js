@@ -1,4 +1,8 @@
+/*jslint browser:true */
+/*global $ */
+
 var FRAMERATE = 25;
+var SPACE_KEY = 32;
 
 var vid, canvas, ctx, gen = null;
 var recentFrame = 0;
@@ -7,11 +11,18 @@ var vidplaying = false;
 var rectWidth = 0;
 var rectHeight = 0;
 
+var secondsToFrames = function(seconds) {
+    return seconds * FRAMERATE;
+};
+
 var mouseMovedCanvas = function(evt) {
     // Get data
-    if (vid.paused) return;
+    if (vid.paused) {
+        return;
+    }
     var rect = canvas.getBoundingClientRect();
     var frame = secondsToFrames(vid.currentTime);
+    var frameData = {};
     frame = Math.floor(frame);
     if (frame > recentFrame) {
         recentFrame = frame;
@@ -33,14 +44,10 @@ var mouseMovedCanvas = function(evt) {
 
     // Draw rectangle
     frameData.rectangles.forEach(function(r) {
-        ctx.clearRect(0, 0, canv.width, canv.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle='rgba(255, 0, 0, 0.5)';
         ctx.fillRect(r.x, r.y, r.width, r.height);
     });
-};
-
-var secondsToFrames = function(seconds) {
-    return seconds * FRAMERATE;
 };
 
 var playVid = function() {
@@ -75,11 +82,7 @@ var setRectHeight = function(val) {
     rectHeight = parseFloat(val);
 };
 
-$(document).ready(function() {
-    vid = $('#vid')[0];
-    canvas = $('#canv')[0];
-    gen = $('#generated')[0];
-    var write = $('#write')[0];
+var setupEvents = function() {
     vid.addEventListener('loadeddata', function() {
         $('#canv').css('width', vid.videoWidth);
         $('#canv').css('height', vid.videoHeight);
@@ -91,18 +94,25 @@ $(document).ready(function() {
     });
     vid.addEventListener('pause', function() {
         vidplaying = false;
-        ctx.clearRect(0, 0, canv.width, canv.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
     });
     canvas.addEventListener('mousemove', mouseMovedCanvas);
     canvas.addEventListener('mouseout', function() {
-        ctx.clearRect(0, 0, canv.width, canv.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
     });
-    ctx = canvas.getContext('2d');
     $('body').keypress(function(e) {
-        if (e.keyCode == 32) {
+        if (e.keyCode === SPACE_KEY) {
             playVid();
         }
     });
+};
+
+$(document).ready(function() {
+    vid = $('#vid')[0];
+    canvas = $('#canv')[0];
+    gen = $('#generated')[0];
+    ctx = canvas.getContext('2d');
+    setupEvents();
     $('#width').trigger('change');
     $('#height').trigger('change');
 });
