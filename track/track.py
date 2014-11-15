@@ -1,20 +1,16 @@
 import cv2
 import json
 
-cap = None
-back_sub = None
-
 
 def _setup_capture(source):
-    global cap
-    cap = cv2.VideoCapture(source)
+    return cv2.VideoCapture(source)
 
 
 def _setup_background_subtractor():
-    global back_sub
     back_sub = cv2.BackgroundSubtractorMOG2()
     back_sub.setDouble('nShadowDetection', 0)
     back_sub.setDouble('history', 25)
+    return back_sub
 
 
 def _bigger_box(b1, b2):
@@ -27,8 +23,8 @@ def _bigger_box(b1, b2):
 
 
 def JSON_from_video(source):
-    _setup_capture(source)
-    _setup_background_subtractor()
+    cap = _setup_capture(source)
+    back_sub = _setup_background_subtractor()
     frame_no = 0
     frames = []
     while(True):

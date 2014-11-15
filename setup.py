@@ -5,5 +5,6 @@ setup(
     version='0.1',
     description='Tracking humans from a camera feed or video file.',
     url='https://github.com/JoelOtter/ic-peopletracking',
-    author='IC Group 17'
+    author='IC Group 17',
+    scripts=['bin/vidtojson']
     )
