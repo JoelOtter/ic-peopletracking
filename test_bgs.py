@@ -1,6 +1,5 @@
 #!/usr/bin/python
 import cv2
-import cv2.cv as cv
 import sys
 
 cap = None
@@ -19,17 +18,24 @@ def setup_background_subtractor():
     global back_sub
     back_sub = cv2.BackgroundSubtractorMOG2()
     back_sub.setDouble('nShadowDetection', 0)
-    back_sub.setDouble('history', 25)
+    back_sub.setDouble('history', 50)
 
 
 def bigEnough((bx, by, bw, bh)):
-    return bw*bh > 5000
+    return bw*bh > 10000
 
 setup_capture()
 setup_background_subtractor()
 
+counter = 0
+
 while(1):
+    counter = (counter + 1) % 5
     ret, frame = cap.read()
+
+    if not ret:
+        break
+
     cv2.imshow('input', frame)
     frameblur = cv2.blur(frame, (5, 5))
     fgmask = back_sub.apply(frameblur, learningRate=0.005)
@@ -42,7 +48,6 @@ while(1):
 
     for bx, by, bw, bh in bounds:
         cv2.rectangle(frame, (bx, by), ((bx + bw), (by + bh)), (0, 255, 0), 3)
-
     cv2.imshow('bounds', frame)
 
     k = cv2.waitKey(3) & 0xff
