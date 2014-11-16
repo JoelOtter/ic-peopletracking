@@ -1,0 +1,27 @@
+#!/usr/bin/env python
+import track
+import argparse
+
+
+def check_video(file):
+    if not file.endswith('.avi') and not file.endswith('.mp4'):
+        raise argparse.ArgumentTypeError("Expected .avi or .mp4 video file")
+    return file
+
+parser = argparse.ArgumentParser(
+    description='Get JSON string of the locations of a person in a video.')
+parser.add_argument('video', type=check_video)
+parser.add_argument('-f', '--file',
+                    help='target output file'
+                    )
+
+args = parser.parse_args()
+
+json = track.JSON_from_video(args.video)
+
+if args.file:
+    f = open(args.file, 'w')
+    f.write(json)
+    f.close()
+else:
+    print json
