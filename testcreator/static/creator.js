@@ -40,14 +40,14 @@ var mouseMovedCanvas = function(evt) {
         };
         allframes.push(frameData);
         gen.innerHTML = JSON.stringify(allframes);
-    }
-
-    // Draw rectangle
-    frameData.rectangles.forEach(function(r) {
+        
+        // Draw rectangle
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle='rgba(255, 0, 0, 0.5)';
-        ctx.fillRect(r.x, r.y, r.width, r.height);
-    });
+        frameData.rectangles.forEach(function(r) {
+            ctx.fillStyle='rgba(255, 0, 0, 0.5)';
+            ctx.fillRect(r.x, r.y, r.width, r.height);
+        });
+    }
 };
 
 var playVid = function() {
