@@ -6,5 +6,6 @@ setup(
     description='Tracking humans from a camera feed or video file.',
     url='https://github.com/JoelOtter/ic-peopletracking',
     author='IC Group 17',
-    scripts=['bin/vidtojson']
+    scripts=['bin/vidtojson', 'bin/cameratojson'],
+    install_requires=['numpy==1.9.0']
     )
