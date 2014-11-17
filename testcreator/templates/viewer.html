@@ -1,0 +1,16 @@
+<html>
+    <head>
+        <title>Output visualiser</title>
+        <script type="text/javascript" src="{{url_for('static', filename='components/jquery/dist/jquery.min.js')}}"></script>
+        <script type="text/javascript" src="{{url_for('static', filename='viewer.js')}}"></script>
+        <link rel="stylesheet" type="text/css" href="{{url_for('static', filename='style.css')}}">
+    </head>
+    <body>
+        <video id="vid" controls></video>
+        <canvas id="canv"></canvas>
+        <div id="data">
+            Video: <input type="file" id="vidpicker" accept="video/*"/>
+            JSON: <input type="file" id="jsonpicker"/>
+        </div>
+    </body>
+</html>
