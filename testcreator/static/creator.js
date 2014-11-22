@@ -4,23 +4,20 @@
 var FRAMERATE = 25;
 var SPACE_KEY = 32;
 
-var vid, canvas, ctx, gen = null;
+var vid, canvas, ctx, gen, frameTimer = null;
 var recentFrame = 0;
 var allframes = [];
-var rectWidth = 0;
-var rectHeight = 0;
-var mouseDown = false;
+var rectWidth, rectHeight, mouseX, mouseY = 0;
+var mouseDown, mouseOnCanvas = false;
 
 var secondsToFrames = function(seconds) {
     return seconds * FRAMERATE;
 };
 
-var mouseMovedCanvas = function(evt) {
-    // Get data
-    if (vid.paused || !mouseDown) {
+var captureFrameData = function() {
+    if (vid.paused || !mouseDown || !mouseOnCanvas) {
         return;
     }
-    var rect = canvas.getBoundingClientRect();
     var frame = secondsToFrames(vid.currentTime);
     var frameData = {};
     frame = Math.floor(frame);
@@ -31,8 +28,8 @@ var mouseMovedCanvas = function(evt) {
             rectangles: [
             {
                 id: '',
-                x: evt.clientX - rect.left - rectWidth/2,
-                y: evt.clientY - rect.top - rectHeight/2,
+                x: mouseX,
+                y: mouseY,
                 width: rectWidth,
                 height: rectHeight
             }
@@ -48,6 +45,14 @@ var mouseMovedCanvas = function(evt) {
             ctx.fillRect(r.x, r.y, r.width, r.height);
         });
     }
+
+};
+
+var mouseMovedCanvas = function(evt) {
+    mouseOnCanvas = true;
+    var rect = canvas.getBoundingClientRect();
+    mouseX = evt.clientX - rect.left - rectWidth/2;
+    mouseY = evt.clientY - rect.top - rectHeight/2;
 };
 
 var playVid = function() {
@@ -94,17 +99,22 @@ var setupEvents = function() {
         $('#canv').prop('width', vid.videoWidth);
         $('#canv').prop('height', vid.videoHeight);
     });
+    vid.addEventListener('play', function() {
+        frameTimer = setInterval(captureFrameData, 1000/FRAMERATE);
+    });
     vid.addEventListener('pause', function() {
+        clearInterval(frameTimer);
         clearCanvas();
     });
     canvas.addEventListener('mousemove', mouseMovedCanvas);
     canvas.addEventListener('mouseout', function() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        mouseOnCanvas = false;
     });
-    canvas.addEventListener('mousedown', function() {
+    document.addEventListener('mousedown', function() {
         mouseDown = true;
     });
-    canvas.addEventListener('mouseup', function() {
+    document.addEventListener('mouseup', function() {
         clearCanvas();
     });
     $('body').keypress(function(e) {
