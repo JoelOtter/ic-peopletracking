@@ -8,4 +8,4 @@ setup(
     author='IC Group 17',
     scripts=['bin/vidtojson', 'bin/cameratojson'],
     install_requires=['numpy==1.9.0']
-    )
+)

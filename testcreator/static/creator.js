@@ -7,9 +7,9 @@ var SPACE_KEY = 32;
 var vid, canvas, ctx, gen = null;
 var recentFrame = 0;
 var allframes = [];
-var vidplaying = false;
 var rectWidth = 0;
 var rectHeight = 0;
+var mouseDown = false;
 
 var secondsToFrames = function(seconds) {
     return seconds * FRAMERATE;
@@ -17,7 +17,7 @@ var secondsToFrames = function(seconds) {
 
 var mouseMovedCanvas = function(evt) {
     // Get data
-    if (vid.paused) {
+    if (vid.paused || !mouseDown) {
         return;
     }
     var rect = canvas.getBoundingClientRect();
@@ -51,7 +51,7 @@ var mouseMovedCanvas = function(evt) {
 };
 
 var playVid = function() {
-    if (!vidplaying) {
+    if (vid.paused) {
         vid.play();
         allframes = [];
         recentFrame = 0;
@@ -82,6 +82,11 @@ var setRectHeight = function(val) {
     rectHeight = parseFloat(val);
 };
 
+var clearCanvas = function() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    mouseDown = false;
+};
+
 var setupEvents = function() {
     vid.addEventListener('loadeddata', function() {
         $('#canv').css('width', vid.videoWidth);
@@ -89,16 +94,18 @@ var setupEvents = function() {
         $('#canv').prop('width', vid.videoWidth);
         $('#canv').prop('height', vid.videoHeight);
     });
-    vid.addEventListener('play', function() {
-        vidplaying = true;
-    });
     vid.addEventListener('pause', function() {
-        vidplaying = false;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        clearCanvas();
     });
     canvas.addEventListener('mousemove', mouseMovedCanvas);
     canvas.addEventListener('mouseout', function() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+    });
+    canvas.addEventListener('mousedown', function() {
+        mouseDown = true;
+    });
+    canvas.addEventListener('mouseup', function() {
+        clearCanvas();
     });
     $('body').keypress(function(e) {
         if (e.keyCode === SPACE_KEY) {
