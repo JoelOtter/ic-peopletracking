@@ -1,0 +1,32 @@
+#!/usr/bin/env python
+import argparse
+from track import test
+
+parser = argparse.ArgumentParser(
+    description='Compare tracking data against expected test')
+
+parser.add_argument('video',
+                    metavar='videofile',
+                    help='target video file'
+                    )
+
+parser.add_argument('expected',
+                    metavar='jsonfile',
+                    help='expected json readings'
+                    )
+
+args = parser.parse_args()
+
+overlap_pcts = test.generate_frame_overlaps(args.video, args.expected)
+
+print """
+Overlap Percentages (pct of expected rectangle covered)
+=======================================================
+Average:    {average_overlap}%
+Minimum:    {minimum_overlap}%
+Maximum:    {maximum_overlap}%
+""".format(
+    average_overlap=round((sum(overlap_pcts) / len(overlap_pcts)), 2),
+    minimum_overlap=round((min(overlap_pcts)), 2),
+    maximum_overlap=round((max(overlap_pcts)), 2)
+)

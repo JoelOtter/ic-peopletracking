@@ -16,7 +16,7 @@ def _setup_background_subtractor():
 def _bigger_box(b1, b2):
     b1x, b1y, b1w, b1h = b1
     b2x, b2y, b2w, b2h = b2
-    if b1w*b1h > b2w*b2h:
+    if b1w * b1h > b2w * b2h:
         return b1
     else:
         return b2
