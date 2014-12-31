@@ -85,7 +85,7 @@ def JSON_from_video(source):
             frame_data['frame'] = frame_no
             bx, by, bw, bh = reduce(_bigger_box, bounds)
 
-            measured = (bx + bw/2, by + bh/2)
+            measured = (bx + bw / 2, by + bh / 2)
 
             # set kalman transition matrix
             kalman.transition_matrix[0, 0] = 1
@@ -105,7 +105,7 @@ def JSON_from_video(source):
             kalman.transition_matrix[3, 2] = 0
             kalman.transition_matrix[3, 3] = 1
             # If i have found something vaguely human
-            if 3*bw < bh:
+            if 3 * bw < bh:
                 # if found is False:
                 found = True
 
@@ -120,8 +120,8 @@ def JSON_from_video(source):
             # I only update the value if it is correct and has been found.
             if found is True:
                 # Update the Kalman filter with these mesaurements
-                kalman_measurement[0, 0] = bx + bw/2
-                kalman_measurement[1, 0] = by + bh/2
+                kalman_measurement[0, 0] = bx + bw / 2
+                kalman_measurement[1, 0] = by + bh / 2
                 # Predict and update the internals of the kalman
                 cv.KalmanPredict(kalman)
                 # Corrrect the estimate
