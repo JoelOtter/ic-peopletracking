@@ -4,23 +4,20 @@
 var FRAMERATE = 25;
 var SPACE_KEY = 32;
 
-var vid, canvas, ctx, gen = null;
+var vid, canvas, ctx, gen, frameTimer = null;
 var recentFrame = 0;
 var allframes = [];
-var vidplaying = false;
-var rectWidth = 0;
-var rectHeight = 0;
+var rectWidth, rectHeight, mouseX, mouseY = 0;
+var mouseDown, mouseOnCanvas = false;
 
 var secondsToFrames = function(seconds) {
     return seconds * FRAMERATE;
 };
 
-var mouseMovedCanvas = function(evt) {
-    // Get data
-    if (vid.paused) {
+var captureFrameData = function() {
+    if (vid.paused || !mouseDown || !mouseOnCanvas) {
         return;
     }
-    var rect = canvas.getBoundingClientRect();
     var frame = secondsToFrames(vid.currentTime);
     var frameData = {};
     frame = Math.floor(frame);
@@ -31,8 +28,8 @@ var mouseMovedCanvas = function(evt) {
             rectangles: [
             {
                 id: '',
-                x: evt.clientX - rect.left - rectWidth/2,
-                y: evt.clientY - rect.top - rectHeight/2,
+                x: mouseX,
+                y: mouseY,
                 width: rectWidth,
                 height: rectHeight
             }
@@ -48,10 +45,18 @@ var mouseMovedCanvas = function(evt) {
             ctx.fillRect(r.x, r.y, r.width, r.height);
         });
     }
+
+};
+
+var mouseMovedCanvas = function(evt) {
+    mouseOnCanvas = true;
+    var rect = canvas.getBoundingClientRect();
+    mouseX = evt.clientX - rect.left - rectWidth/2;
+    mouseY = evt.clientY - rect.top - rectHeight/2;
 };
 
 var playVid = function() {
-    if (!vidplaying) {
+    if (vid.paused) {
         vid.play();
         allframes = [];
         recentFrame = 0;
@@ -82,6 +87,11 @@ var setRectHeight = function(val) {
     rectHeight = parseFloat(val);
 };
 
+var clearCanvas = function() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    mouseDown = false;
+};
+
 var setupEvents = function() {
     vid.addEventListener('loadeddata', function() {
         $('#canv').css('width', vid.videoWidth);
@@ -90,15 +100,22 @@ var setupEvents = function() {
         $('#canv').prop('height', vid.videoHeight);
     });
     vid.addEventListener('play', function() {
-        vidplaying = true;
+        frameTimer = setInterval(captureFrameData, 1000/FRAMERATE);
     });
     vid.addEventListener('pause', function() {
-        vidplaying = false;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        clearInterval(frameTimer);
+        clearCanvas();
     });
     canvas.addEventListener('mousemove', mouseMovedCanvas);
     canvas.addEventListener('mouseout', function() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        mouseOnCanvas = false;
+    });
+    document.addEventListener('mousedown', function() {
+        mouseDown = true;
+    });
+    document.addEventListener('mouseup', function() {
+        clearCanvas();
     });
     $('body').keypress(function(e) {
         if (e.keyCode === SPACE_KEY) {
