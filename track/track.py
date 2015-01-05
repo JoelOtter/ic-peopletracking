@@ -38,6 +38,62 @@ def _bigger_box(b1, b2):
         return b2
 
 
+def createKalman(bx, by, bw, bh):
+    processNoiseCovariance = 1e-5
+    measurementNoiseCovariance = 1e-1
+    errorCovariancePost = 0.1
+
+    kalman = cv.CreateKalman(4, 2, 0)
+    kalman.state_pre[0, 0] = bx + bw / 2
+    kalman.state_pre[1, 0] = by + bh / 2
+    kalman.state_pre[2, 0] = 0
+    kalman.state_pre[3, 0] = 0
+
+    cv.SetIdentity(kalman.measurement_matrix, cv.RealScalar(1))
+    cv.SetIdentity(kalman.process_noise_cov,
+                   cv.RealScalar(processNoiseCovariance))
+    cv.SetIdentity(kalman.measurement_noise_cov,
+                   cv.RealScalar(measurementNoiseCovariance))
+    cv.SetIdentity(kalman.error_cov_post, cv.RealScalar(errorCovariancePost))
+
+    # set kalman transition matrix
+    kalman.transition_matrix[0, 0] = 1
+    kalman.transition_matrix[0, 1] = 0
+    kalman.transition_matrix[0, 2] = 1
+    kalman.transition_matrix[0, 3] = 0
+    kalman.transition_matrix[1, 0] = 0
+    kalman.transition_matrix[1, 1] = 1
+    kalman.transition_matrix[1, 2] = 0
+    kalman.transition_matrix[1, 3] = 0
+    kalman.transition_matrix[2, 0] = 0
+    kalman.transition_matrix[2, 1] = 0
+    kalman.transition_matrix[2, 2] = 0
+    kalman.transition_matrix[2, 3] = 1
+    kalman.transition_matrix[3, 0] = 0
+    kalman.transition_matrix[3, 1] = 0
+    kalman.transition_matrix[3, 2] = 0
+    kalman.transition_matrix[3, 3] = 1
+
+    return kalman
+
+
+def checkNewRect(kalmans, x, y, w, h):
+    new_rect = False
+    if not kalmans:
+        return True
+    c_x = x + w / 2
+    # c_y = y + h / 2
+    for triple in kalmans:
+        # Get measurement matrix
+        k_m = triple[1]
+        k_x = k_m[0, 0]
+        # k_y = k_m[1, 0]
+        if (c_x < k_x - 500 or c_x > k_x + 500):
+            new_rect = True
+
+    return new_rect
+
+
 def JSON_from_video(source):
     cap = _setup_capture(source)
     wait_per_frame = int(1000 / int(cap.get(cv2.cv.CV_CAP_PROP_FPS)))
