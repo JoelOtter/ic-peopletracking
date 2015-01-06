@@ -3,6 +3,11 @@ import track
 import argparse
 
 
+def check_dimension(size):
+    if int(size) < 1:
+        raise argparse.ArgumentTypeError('Values for sizes must be above 0')
+    return int(size)
+
 def check_video(file):
     if not file.endswith('.avi') and not file.endswith('.mp4'):
         raise argparse.ArgumentTypeError("Expected .avi or .mp4 video file")
@@ -14,10 +19,16 @@ parser.add_argument('video', type=check_video)
 parser.add_argument('-f', '--file',
                     help='target output file'
                     )
+parser.add_argument('--height', type=check_dimension, default=0,
+                    help='resize feed to given height'
+                    )
+parser.add_argument('--width', type=check_dimension, default=0,
+                    help='resize feed to given width'
+                    )
 
 args = parser.parse_args()
 
-json = track.JSON_from_video(args.video)
+json = track.JSON_from_video(args.video, args.width, args.height)
 
 if args.file:
     f = open(args.file, 'w')

@@ -1,0 +1,64 @@
+#!/usr/bin/env python
+import track
+import argparse
+
+
+def check_positive(index):
+    if int(index) < 0:
+        raise argparse.ArgumentTypeError("Feed index must at least 0")
+    return int(index)
+
+
+def check_dimension(size):
+    if size < 1:
+        raise argparse.ArgumentTypeError('Values for sizes must be above 0')
+    return int(size)
+
+
+def check_video(file):
+    if not file.endswith('.avi') and not file.endswith('.mp4'):
+        raise argparse.ArgumentTypeError("Expected .avi or .mp4 video file")
+    return file
+
+parser = argparse.ArgumentParser(
+    description='Get JSON string of the locations of a person in a video.')
+parser.add_argument('-l', '--live', type=check_positive,
+                    help='index for webcam, starts from 0')
+parser.add_argument('-v', '--video', type=check_video,
+                    help='path to video file')
+parser.add_argument('-f', '--file',
+                    help='target output file'
+                    )
+parser.add_argument('--height', type=check_dimension,
+                    help='resize feed to given height'
+                    )
+parser.add_argument('--width', type=check_dimension,
+                    help='resize feed to given width'
+                    )
+
+args = parser.parse_args()
+
+if args.live is None and args.video is None:
+    parser.error("Must specify live feed or video")
+
+if args.live is not None and args.video is not None:
+    parser.error("Specify either live feed or video")
+
+if args.live is None:
+    feed = args.video
+else:
+    feed = args.live
+
+if args.height is None:
+    args.height = 0
+
+if args.width is None:
+    args.width = 0
+
+json = track.JSON_from_video(feed, args.width,
+                             args.height, show_images=True)
+
+if args.file:
+    f = open(args.file, 'w')
+    f.write(json)
+    f.close()
