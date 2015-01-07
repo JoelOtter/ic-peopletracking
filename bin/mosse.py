@@ -103,6 +103,8 @@ class MOSSE:
         x1, y1 = (x1 + x2 - w) // 2, (y1 + y2 - h) // 2
         self.pos = x, y = x1 + 0.5 * (w - 1), y1 + 0.5 * (h - 1)
         self.size = w, h
+        # print w, h, x, y
+        self.bad_count = 0
         img = cv2.getRectSubPix(frame, (w, h), (x, y))
 
         self.win = cv2.createHanningWindow((w, h), cv2.CV_32F)
@@ -121,9 +123,6 @@ class MOSSE:
             self.H2 += cv2.mulSpectrums(A, A, 0, conjB=True)
         self.update_kernel()
         self.update(frame)
-
-    def returnCentre(self):
-        return self.pos
 
     def update(self, frame, rate=0.125):
         (x, y), (w, h) = self.pos, self.size
@@ -165,6 +164,7 @@ class MOSSE:
         if self.good:
             cv2.circle(vis, (int(x), int(y)), 2, (0, 0, 255), -1)
         else:
+            self.bad_count += 1
             cv2.line(vis, (x1, y1), (x2, y2), (0, 0, 255))
             cv2.line(vis, (x2, y1), (x1, y2), (0, 0, 255))
         draw_str(vis, (x1, y2 + 16), 'PSR: %.2f' % self.psr)
@@ -207,6 +207,9 @@ class App:
 
     def run(self):
         back_sub = _setup_background_subtractor()
+        hog = cv2.HOGDescriptor()
+        hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector()
+                           )
         while True:
             if not self.paused:
                 ret, self.frame = self.cap.read()
@@ -217,25 +220,27 @@ class App:
                     break
                 # contour code
                 frameblur = cv2.blur(self.frame, (5, 5))
-                fgmask = back_sub.apply(frameblur, learningRate=0.005)
+                fgmask = back_sub.apply(frameblur, learningRate=0.003)
                 contours, hier = cv2.findContours(fgmask, cv2.RETR_EXTERNAL,
                                                   cv2.CHAIN_APPROX_SIMPLE)
                 bounds = map(cv2.boundingRect, contours)
 
-                hog = cv2.HOGDescriptor()
-
-                hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector()
-                                   )
                 frame_gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
                 for bound in bounds:
                     bx, by, bw, bh = bound
-                    cx = bx + (1.3 * bw / 2)
-                    cy = by + (1.5 * by / 2)
+                    x1 = bx
+                    x2 = int(bx + 1.5 * bw)
+                    y1 = int(by - 0.5 * bh)
+                    y2 = int(by + bh)
+
+                    cx, cy = x1 + (x2 - x1) / 2, y1 + (y2 - y1) / 2
+
                     likely_same = False
                     for tracker in self.trackers:
                         x, y = tracker.pos
-                        if((cx < x + 70 or cx < x - 70) and
-                                (cy < y + 100 or cy < y - 100)):
+                        # print x, y, cx, cy
+                        if(cx < x + 30 and cx > x - 30 and
+                           cy < y + 50 and cy > y - 50):
                             likely_same = True
                             break
 
@@ -243,24 +248,27 @@ class App:
                         break
 
                     if bw > 30 and bh > 3 * bw and bh > 70:
-                        crop_img = self.frame[by:by + 1.1 * bh,
-                                              bx:bx + 1.1 * bw]
+                        crop_img = self.frame[by:by + 1.3 * bh,
+                                              bx:bx + 1.3 * bw]
                         found, w = hog.detect(crop_img,
                                               winStride=(8, 8),
                                               padding=(32, 32))
                         if found is not None:
-                            x1 = int(bx - 0.3 * bw)
+                            x1 = bx
                             x2 = int(bx + 1.5 * bw)
-                            y2 = int(by + 1.5 * bh)
-                            y1 = int(by - 0.7 * bh)
+                            y1 = int(by - 0.5 * bh)
+                            y2 = int(by + bh)
+                            # print x1 + (x2 - x1) / 2, y1 + (y2 - y1) / 2
                             bound = x1, y1, x2, y2
-                            cv2.rectangle(self.frame, (bx, by), ((bx + bw),
-                                          (by + bh)), (0, 255, 0), 3)
+                            cv2.rectangle(self.frame, (x1, y1), ((x2),
+                                          (y2)), (0, 255, 0), 3)
                             tracker = MOSSE(frame_gray, bound)
                             self.trackers.append(tracker)
 
-                for tracker in self.trackers:
+                for tracker in self.trackers[:]:
                     tracker.update(frame_gray)
+                    if tracker.bad_count > 10:
+                        self.trackers.remove(tracker)
                 # end of contour code
             vis = self.frame.copy()
             for tracker in self.trackers:
