@@ -37,7 +37,6 @@ var captureFrameData = function() {
     if (vid.paused || !mouseDown || !mouseOnCanvas) {
         return;
     }
-    console.log('capture');
     var frame = secondsToFrames(vid.currentTime);
     var frameData = {};
     frame = Math.floor(frame);
@@ -76,7 +75,7 @@ var mouseMovedCanvas = function(evt) {
 
 var mouseScrolled = function(e) {
     e.preventDefault();
-    var newWidth = rectWidth + e.originalEvent.wheelDelta;
+    var newWidth = rectWidth + e.originalEvent.wheelDelta / 4;
     rectHeight = Math.round(rectHeight * (newWidth / rectWidth));
     rectWidth = Math.round(newWidth);
     $('#width').val(rectWidth);
