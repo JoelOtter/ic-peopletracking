@@ -4,6 +4,9 @@
 var FRAMERATE = 25;
 var SPACE_KEY = 32;
 
+var RED = 'rgba(255, 0, 0, 0.5)',
+    GREEN = 'rgba(0, 255, 0, 0.5)';
+
 var vid, canvas, ctx, gen, frameTimer = null;
 var recentFrame = 0;
 var allframes = [];
@@ -12,6 +15,22 @@ var mouseDown, mouseOnCanvas = false;
 
 var secondsToFrames = function(seconds) {
     return seconds * FRAMERATE;
+};
+
+var clearCanvas = function() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+};
+
+var drawRectAtCoords = function(r, col) {
+    ctx.fillStyle = col;
+    ctx.fillRect(r.x, r.y, r.width, r.height);
+};
+
+var drawRectAtMouse = function(col) {
+    var canvR =  canvas.getBoundingClientRect();
+    ctx.fillStyle = col;
+    ctx.fillRect(mouseX - canvR.left - rectWidth/2,
+                 mouseY - canvR.top - rectHeight/2, rectWidth, rectHeight);
 };
 
 var captureFrameData = function() {
@@ -23,13 +42,14 @@ var captureFrameData = function() {
     frame = Math.floor(frame);
     if (frame > recentFrame) {
         recentFrame = frame;
+        var canvR = canvas.getBoundingClientRect();
         frameData = {
             frame: frame,
             rectangles: [
             {
                 id: '',
-                x: mouseX,
-                y: mouseY,
+                x: mouseX - canvR.left - rectWidth/2,
+                y: mouseY - canvR.top - rectHeight/2,
                 width: rectWidth,
                 height: rectHeight
             }
@@ -39,10 +59,9 @@ var captureFrameData = function() {
         gen.innerHTML = JSON.stringify(allframes);
         
         // Draw rectangle
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        clearCanvas();
         frameData.rectangles.forEach(function(r) {
-            ctx.fillStyle='rgba(255, 0, 0, 0.5)';
-            ctx.fillRect(r.x, r.y, r.width, r.height);
+            drawRectAtCoords(r, RED);
         });
     }
 
@@ -50,9 +69,20 @@ var captureFrameData = function() {
 
 var mouseMovedCanvas = function(evt) {
     mouseOnCanvas = true;
-    var rect = canvas.getBoundingClientRect();
-    mouseX = evt.clientX - rect.left - rectWidth/2;
-    mouseY = evt.clientY - rect.top - rectHeight/2;
+    mouseX = evt.clientX;
+    mouseY = evt.clientY;
+};
+
+var mouseScrolled = function(e) {
+    e.preventDefault();
+    var newWidth = rectWidth + e.originalEvent.wheelDelta / 4;
+    rectHeight = Math.round(rectHeight * (newWidth / rectWidth));
+    rectWidth = Math.round(newWidth);
+    $('#width').val(rectWidth);
+    $('#height').val(rectHeight);
+    clearCanvas();
+    var col = mouseDown ? RED : GREEN;
+    drawRectAtMouse(col);
 };
 
 var playVid = function() {
@@ -83,13 +113,13 @@ var writeToFile = function(vfolder, vfile) {
 var setRectWidth = function(val) {
     rectWidth = parseFloat(val);
 };
+
 var setRectHeight = function(val) {
     rectHeight = parseFloat(val);
 };
 
 var clearCanvas = function() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    mouseDown = false;
 };
 
 var setupEvents = function() {
@@ -111,11 +141,13 @@ var setupEvents = function() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         mouseOnCanvas = false;
     });
+    $('#canv').on('DOMMouseScroll mousewheel', mouseScrolled);
     document.addEventListener('mousedown', function() {
         mouseDown = true;
     });
     document.addEventListener('mouseup', function() {
         clearCanvas();
+        mouseDown = false;
     });
     $('body').keypress(function(e) {
         if (e.keyCode === SPACE_KEY) {
