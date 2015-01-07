@@ -2,6 +2,30 @@ import numpy as np
 import cv2
 
 
+def inside(r, q):
+    rx, ry, rw, rh = r
+    qx, qy, qw, qh = q
+    return rx > qx and ry > qy and rx + rw < qx + qw and ry + rh < qy + qh
+
+
+def draw_detections(img, rects, thickness=1):
+    for x, y, w, h in rects:
+        # the HOG detector returns slightly larger rectangles than the real
+        # objects.
+        # so we slightly shrink the rectangles to get a nicer output.
+        pad_w, pad_h = int(0.15 * w), int(0.05 * h)
+        cv2.rectangle(img, (x + pad_w, y + pad_h),
+                      (x + w - pad_w, y + h - pad_h),
+                      (0, 255, 0), thickness)
+
+
+def _setup_background_subtractor():
+    back_sub = cv2.BackgroundSubtractorMOG2()
+    back_sub.setDouble('nShadowDetection', 0)
+    back_sub.setDouble('history', 25)
+    return back_sub
+
+
 class RectSelector:
     def __init__(self, win, callback):
         self.win = win
@@ -98,6 +122,9 @@ class MOSSE:
         self.update_kernel()
         self.update(frame)
 
+    def returnCentre(self):
+        return self.pos
+
     def update(self, frame, rate=0.125):
         (x, y), (w, h) = self.pos, self.size
         self.last_img = img = cv2.getRectSubPix(frame, (w, h), (x, y))
@@ -169,7 +196,7 @@ class App:
         self.cap = cv2.VideoCapture(video_src)
         _, self.frame = self.cap.read()
         cv2.imshow('frame', self.frame)
-        self.rect_sel = RectSelector('frame', self.onrect)
+        # self.rect_sel = RectSelector('frame', self.onrect)
         self.trackers = []
         self.paused = paused
 
@@ -179,21 +206,68 @@ class App:
         self.trackers.append(tracker)
 
     def run(self):
+        back_sub = _setup_background_subtractor()
         while True:
             if not self.paused:
                 ret, self.frame = self.cap.read()
+                self.frame = cv2.resize(self.frame, (854, 480))
+                # cv2.rectangle(self.frame, (400, 0), (450, 480),
+                # (0, 255, 255), -1)
                 if not ret:
                     break
+                # contour code
+                frameblur = cv2.blur(self.frame, (5, 5))
+                fgmask = back_sub.apply(frameblur, learningRate=0.005)
+                contours, hier = cv2.findContours(fgmask, cv2.RETR_EXTERNAL,
+                                                  cv2.CHAIN_APPROX_SIMPLE)
+                bounds = map(cv2.boundingRect, contours)
+
+                hog = cv2.HOGDescriptor()
+
+                hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector()
+                                   )
                 frame_gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
+                for bound in bounds:
+                    bx, by, bw, bh = bound
+                    cx = bx + (1.3 * bw / 2)
+                    cy = by + (1.5 * by / 2)
+                    likely_same = False
+                    for tracker in self.trackers:
+                        x, y = tracker.pos
+                        if((cx < x + 70 or cx < x - 70) and
+                                (cy < y + 100 or cy < y - 100)):
+                            likely_same = True
+                            break
+
+                    if likely_same:
+                        break
+
+                    if bw > 30 and bh > 3 * bw and bh > 70:
+                        crop_img = self.frame[by:by + 1.1 * bh,
+                                              bx:bx + 1.1 * bw]
+                        found, w = hog.detect(crop_img,
+                                              winStride=(8, 8),
+                                              padding=(32, 32))
+                        if found is not None:
+                            x1 = int(bx - 0.3 * bw)
+                            x2 = int(bx + 1.5 * bw)
+                            y2 = int(by + 1.5 * bh)
+                            y1 = int(by - 0.7 * bh)
+                            bound = x1, y1, x2, y2
+                            cv2.rectangle(self.frame, (bx, by), ((bx + bw),
+                                          (by + bh)), (0, 255, 0), 3)
+                            tracker = MOSSE(frame_gray, bound)
+                            self.trackers.append(tracker)
+
                 for tracker in self.trackers:
                     tracker.update(frame_gray)
-
+                # end of contour code
             vis = self.frame.copy()
             for tracker in self.trackers:
                 tracker.draw_state(vis)
             if len(self.trackers) > 0:
                 cv2.imshow('tracker state', self.trackers[-1].state_vis)
-            self.rect_sel.draw(vis)
+            # self.rect_sel.draw(vis)
 
             cv2.imshow('frame', vis)
             ch = cv2.waitKey(10)
