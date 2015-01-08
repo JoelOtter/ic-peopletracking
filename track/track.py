@@ -22,8 +22,30 @@ def _bigger_box(b1, b2):
         return b2
 
 
-def JSON_from_video(source):
+def JSON_from_video(source, width=0, height=0, show_images=False):
+
+    def show_image(name, image):
+        if show_images:
+            cv2.imshow(name, image)
+
     cap = _setup_capture(source)
+
+    def resize(frame, width, height):
+        if height == 0 and width == 0:
+            return frame
+
+        feed_height = float(cap.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT))
+        feed_width = float(cap.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH))
+
+        if height == 0:
+            height = feed_height * width / feed_width
+            height = int(height)
+        if width == 0:
+            width = feed_width * height / feed_height
+            width = int(width)
+
+        return cv2.resize(frame, (width, height))
+
     back_sub = _setup_background_subtractor()
     frame_no = 0
     frames = []
@@ -33,8 +55,12 @@ def JSON_from_video(source):
         if not ret:
             break
 
+        frame = resize(frame, width, height)
+
         frameblur = cv2.blur(frame, (5, 5))
         fgmask = back_sub.apply(frameblur, learningRate=0.001)
+
+        show_image('contours', fgmask)
 
         contours, hier = cv2.findContours(fgmask, cv2.RETR_EXTERNAL,
                                           cv2.CHAIN_APPROX_SIMPLE)
@@ -52,9 +78,17 @@ def JSON_from_video(source):
                                          'y': by,
                                          'width': bw,
                                          'height': bh}]
+            print frame_data
+
             frames.append(frame_data)
 
+        show_image('input', frame)
         frame_no += 1
+
+        if show_images:
+            k = cv2.waitKey(1) & 0xff
+            if k == 27:
+                break
 
     cap.release()
     cv2.destroyAllWindows()

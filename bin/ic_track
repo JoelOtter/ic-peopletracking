@@ -1,0 +1,74 @@
+#!/usr/bin/env python
+import track
+import argparse
+
+
+def get_type_error(text):
+    return argparse.ArgumentTypeError(text)
+
+
+def check_positive(index):
+    error_msg = "Feed index must be at least 0"
+
+    try:
+        index_n = int(index)
+    except ValueError:
+        raise get_type_error(error_msg)
+
+    if index_n < 0:
+        raise get_type_error(error_msg)
+
+    return int(index)
+
+
+def check_dimension(size):
+    error_msg = "Values for sizes must be above 0"
+
+    try:
+        size_n = int(size)
+    except ValueError:
+        raise get_type_error(error_msg)
+
+    if size_n < 1:
+        raise get_type_error(error_msg)
+
+    return size_n
+
+
+def check_video(file):
+    if not file.endswith('.avi') and not file.endswith('.mp4'):
+        raise argparse.ArgumentTypeError("Expected .avi or .mp4 video file")
+    return file
+
+parser = argparse.ArgumentParser(
+    description='Get JSON string of the locations of a person in a video.')
+parser.add_argument('-l', '--live', type=check_positive,
+                    help='index for webcam, starts from 0')
+parser.add_argument('-v', '--video', type=check_video,
+                    help='path to video file')
+parser.add_argument('-f', '--file',
+                    help='target output file'
+                    )
+parser.add_argument('--height', type=check_dimension,
+                    help='resize feed to given height'
+                    )
+parser.add_argument('--width', type=check_dimension,
+                    help='resize feed to given width'
+                    )
+parser.add_argument('--show_images', action='store_true', default=False,
+                    help='show image with boxes surrounding detected people.')
+args = parser.parse_args()
+
+if args.live is None and args.video is None:
+    parser.error("Must specify live feed or video")
+
+if args.live is not None and args.video is not None:
+    parser.error("Specify either live feed or video")
+
+json = track.JSON_from_video(args.video or args.live, args.width or 0,
+                             args.height or 0, show_images=args.show_images)
+
+if args.file:
+    f = open(args.file, 'w')
+    f.write(json)
+    f.close()
