@@ -78,8 +78,7 @@ def JSON_from_video(source, width=0, height=0, show_images=False):
                                          'y': by,
                                          'width': bw,
                                          'height': bh}]
-            if show_images:
-                print frame_data
+            print frame_data
 
             frames.append(frame_data)
 

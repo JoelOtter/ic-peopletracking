@@ -3,16 +3,36 @@ import track
 import argparse
 
 
+def get_type_error(text):
+    return argparse.ArgumentTypeError(text)
+
+
 def check_positive(index):
-    if int(index) < 0:
-        raise argparse.ArgumentTypeError("Feed index must at least 0")
+    error_msg = "Feed index must be at least 0"
+
+    try:
+        index_n = int(index)
+    except ValueError:
+        raise get_type_error(error_msg)
+
+    if index_n < 0:
+        raise get_type_error(error_msg)
+
     return int(index)
 
 
 def check_dimension(size):
-    if size < 1:
-        raise argparse.ArgumentTypeError('Values for sizes must be above 0')
-    return int(size)
+    error_msg = "Values for sizes must be above 0"
+
+    try:
+        size_n = int(size)
+    except ValueError:
+        raise get_type_error(error_msg)
+
+    if size_n < 1:
+        raise get_type_error(error_msg)
+
+    return size_n
 
 
 def check_video(file):
@@ -35,7 +55,8 @@ parser.add_argument('--height', type=check_dimension,
 parser.add_argument('--width', type=check_dimension,
                     help='resize feed to given width'
                     )
-
+parser.add_argument('--show_images', action='store_true', default=False,
+                    help='show image with boxes surrounding detected people.')
 args = parser.parse_args()
 
 if args.live is None and args.video is None:
@@ -44,19 +65,8 @@ if args.live is None and args.video is None:
 if args.live is not None and args.video is not None:
     parser.error("Specify either live feed or video")
 
-if args.live is None:
-    feed = args.video
-else:
-    feed = args.live
-
-if args.height is None:
-    args.height = 0
-
-if args.width is None:
-    args.width = 0
-
-json = track.JSON_from_video(feed, args.width,
-                             args.height, show_images=True)
+json = track.JSON_from_video(args.video or args.live, args.width or 0,
+                             args.height or 0, show_images=args.show_images)
 
 if args.file:
     f = open(args.file, 'w')
