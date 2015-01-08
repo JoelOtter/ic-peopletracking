@@ -2,29 +2,13 @@ import track
 import json
 
 
-class Rect:
+# Generates frame overlap data given a video path and JSON path
+def generate_frame_overlaps(video, jsonfile):
+    generated_json = json.loads(track.JSON_from_video(video))
+    expected_json = json.load(open(jsonfile, 'r'))
 
-    def __init__(self, attrs):
-        for a in attrs:
-            setattr(self, a, attrs[a])
-
-    def area(self):
-        return self.width * self.height
-
-    def intersection(self, rect):
-
-        if (((self.x + self.width) < rect.x)
-            or (self.x > (rect.x + rect.width))
-            or ((self.y + self.height) < rect.y)
-                or (self.y > (rect.y + rect.height))):
-                return 0
-
-        width = (min(self.x + self.width, rect.x + rect.width)
-                 - max(self.x, rect.x))
-        height = (min(self.y + self.height, rect.y + rect.height)
-                  - max(self.y, rect.y))
-
-        return width * height
+    common_frames = _match_common_frames(expected_json, generated_json)
+    return _generate_overlap_pcts(common_frames)
 
 
 def _match_common_frames(exp, gen):
@@ -56,10 +40,26 @@ def _generate_overlap_pcts(frames):
     return frame_overlap_pcts
 
 
-def generate_frame_overlaps(video, jsonfile):
-    """Generates frame overlap data given a video path and JSON path."""
-    generated_json = json.loads(track.JSON_from_video(video))
-    expected_json = json.load(open(jsonfile, 'r'))
+class Rect:
 
-    common_frames = _match_common_frames(expected_json, generated_json)
-    return _generate_overlap_pcts(common_frames)
+    def __init__(self, attrs):
+        for a in attrs:
+            setattr(self, a, attrs[a])
+
+    def area(self):
+        return self.width * self.height
+
+    def intersection(self, rect):
+
+        if (((self.x + self.width) < rect.x)
+            or (self.x > (rect.x + rect.width))
+            or ((self.y + self.height) < rect.y)
+                or (self.y > (rect.y + rect.height))):
+                return 0
+
+        width = (min(self.x + self.width, rect.x + rect.width)
+                 - max(self.x, rect.x))
+        height = (min(self.y + self.height, rect.y + rect.height)
+                  - max(self.y, rect.y))
+
+        return width * height
