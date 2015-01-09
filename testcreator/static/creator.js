@@ -88,13 +88,12 @@ var playVid = function() {
 };
 
 var mergeFrames = function() {
-    console.log(allFrames);
     var keys = [];
     for (var r in allFrames) {
         keys = _.union(keys, Object.keys(allFrames[r]));
     }
     var res = [];
-    for (var k in keys) {
+    keys.forEach(function(k)  {
         var rects = [];
         var frameNum = parseInt(k);
         for (var rect in allFrames) {
@@ -105,7 +104,7 @@ var mergeFrames = function() {
         if (rects.length > 0) {
             res.push({frame: frameNum, rectangles: rects});
         }
-    }
+    });
     return res;
 };
 
