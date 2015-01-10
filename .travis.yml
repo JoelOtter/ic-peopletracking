@@ -41,4 +41,4 @@ script:
 
 cache:
     directories:
-        - $HOME/build
+        - $HOME/opencv-2.4.9/build
