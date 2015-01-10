@@ -1,5 +1,5 @@
 /*jslint browser:true */
-/*global $ */
+/*global $, _ */
 
 var FRAMERATE = 25;
 var SPACE_KEY = 32;
@@ -9,9 +9,11 @@ var RED = 'rgba(255, 0, 0, 0.5)',
 
 var vid, canvas, ctx, gen, frameTimer = null;
 var recentFrame = 0;
-var allframes = [];
+var allFrames = {},
+    currentFrames = {};
 var rectWidth, rectHeight, mouseX, mouseY = 0;
 var mouseDown, mouseOnCanvas = false;
+var rectID = "";
 
 var secondsToFrames = function(seconds) {
     return seconds * FRAMERATE;
@@ -44,25 +46,18 @@ var captureFrameData = function() {
         recentFrame = frame;
         var canvR = canvas.getBoundingClientRect();
         frameData = {
-            frame: frame,
-            rectangles: [
-            {
-                id: '',
-                x: mouseX - canvR.left - rectWidth/2,
-                y: mouseY - canvR.top - rectHeight/2,
-                width: rectWidth,
-                height: rectHeight
-            }
-            ]
+            id: rectID,
+            x: mouseX - canvR.left - rectWidth/2,
+            y: mouseY - canvR.top - rectHeight/2,
+            width: rectWidth,
+            height: rectHeight
         };
-        allframes.push(frameData);
-        gen.innerHTML = JSON.stringify(allframes);
+        currentFrames[frame] = frameData;
+        gen.innerHTML = JSON.stringify(currentFrames);
         
         // Draw rectangle
         clearCanvas();
-        frameData.rectangles.forEach(function(r) {
-            drawRectAtCoords(r, RED);
-        });
+        drawRectAtCoords(frameData, RED);
     }
 
 };
@@ -88,10 +83,29 @@ var mouseScrolled = function(e) {
 var playVid = function() {
     if (vid.paused) {
         vid.play();
-        allframes = [];
         recentFrame = 0;
-        gen.innerHTML = JSON.stringify(allframes);
     }
+};
+
+var mergeFrames = function() {
+    var keys = [];
+    for (var r in allFrames) {
+        keys = _.union(keys, Object.keys(allFrames[r]));
+    }
+    var res = [];
+    keys.forEach(function(k)  {
+        var rects = [];
+        var frameNum = parseInt(k);
+        for (var rect in allFrames) {
+            if (_.has(allFrames[rect], frameNum)) {
+                rects.push(allFrames[rect][frameNum]);
+            }
+        }
+        if (rects.length > 0) {
+            res.push({frame: frameNum, rectangles: rects});
+        }
+    });
+    return res;
 };
 
 var writeToFile = function(vfolder, vfile) {
@@ -100,7 +114,7 @@ var writeToFile = function(vfolder, vfile) {
         type: 'POST',
         url: '/write',
         data: {
-            framedata: JSON.stringify(allframes),
+            framedata: JSON.stringify(mergeFrames()),
             vfolder: vfolder,
             vfile: vfile
         },
@@ -116,6 +130,10 @@ var setRectWidth = function(val) {
 
 var setRectHeight = function(val) {
     rectHeight = parseFloat(val);
+};
+
+var setRectID = function(val) {
+    rectID = val;
 };
 
 var clearCanvas = function() {
@@ -135,6 +153,8 @@ var setupEvents = function() {
     vid.addEventListener('pause', function() {
         clearInterval(frameTimer);
         clearCanvas();
+        allFrames[rectID] = currentFrames;
+        currentFrames = {};
     });
     canvas.addEventListener('mousemove', mouseMovedCanvas);
     canvas.addEventListener('mouseout', function() {
