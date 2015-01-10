@@ -38,7 +38,3 @@ notifications:
 
 script:
     - shovel test.all_overlaps
-
-cache:
-    directories:
-        - $HOME/opencv-2.4.9/build
