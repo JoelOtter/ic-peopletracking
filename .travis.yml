@@ -13,7 +13,7 @@ before_install:
     - cmake -D WITH_TBB=ON -D BUILD_NEW_PYTHON_SUPPORT=ON -D WITH_V4L=ON -D INSTALL_C_EXAMPLES=ON -D INSTALL_PYTHON_EXAMPLES=ON -D BUILD_EXAMPLES=ON -D WITH_QT=ON -D WITH_OPENGL=ON ..
     - make
     - sudo make install
-    - sudo echo "/usr/local/lib" >> /etc/ld.so.conf.d/opencv.conf
+    - echo "/usr/local/lib" >> /etc/ld.so.conf.d/opencv.conf
     - sudo ldconfig
     - export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/lib/pkgconfig
     # ssh
@@ -38,3 +38,7 @@ notifications:
 
 script:
     - shovel test.all_overlaps
+
+cache:
+    directories:
+        - $HOME/build
