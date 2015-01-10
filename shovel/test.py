@@ -1,7 +1,9 @@
 import os
 import re
+import sys
 from subprocess import call, check_output
 from shovel import task
+from track import test
 
 VM_CONF = {
     'host': 'cvm-g1436217.doc.ic.ac.uk',
@@ -16,6 +18,12 @@ TEST_CONF = {
     'videoPath': videoPath,
     'escapedVideoPath': videoPath.replace(' ', r'\ ')
 }
+
+TICK = u'\u2714'
+CROSS = u'\u2717'
+ENDC = '\033[0m'
+RED = '\033[1;31m'
+GREEN = '\033[1;32m'
 
 
 @task
@@ -54,3 +62,32 @@ def clean():
 
     print os.system(findCommand)
 
+
+@task
+def all_overlaps():
+    '''runs overlap test on all JSON test data'''
+    test_files = []
+    fails = 0
+    for root, dirs, files in os.walk(TEST_CONF['videoPath']):
+        for f in files:
+            if f.endswith('.json'):
+                test_files.append(os.path.join(root, f))
+
+    for f in test_files:
+        video_file = f[:-4] + 'mp4'
+        old_stdout = sys.stdout
+        sys.stdout = open(os.devnull, 'w')
+        try:
+            overlap_pcts = test.generate_frame_overlaps(video_file, f)
+        finally:
+            sys.stdout.close()
+            sys.stdout = old_stdout
+        avg = round((sum(overlap_pcts) / len(overlap_pcts)), 1)
+        name = '/'.join(f[:-5].split('/')[-2:])
+        if (avg < 50):
+            fails += 1
+            linestart = RED + CROSS
+        else:
+            linestart = GREEN + TICK
+        print linestart + ' ' + str(avg) + '%' + ' ' + name + ENDC
+    sys.exit(fails)
