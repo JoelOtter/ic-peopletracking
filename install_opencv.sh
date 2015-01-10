@@ -20,4 +20,14 @@ make
 sudo make install
 sudo sh -c 'echo "/usr/local/lib" > /etc/ld.so.conf.d/opencv.conf'
 sudo ldconfig
+export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/lib/pkgconfig
+if [-a /usr/local/lib/python2.7/dist-packages/cv2.so]
+then
+    ln -s /usr/local/lib/python2.7/dist-packages/cv2.so $VIRTUAL_ENV/lib/python2.7/site-packages/cv2.so;
+    ln -s /usr/local/lib/python2.7/dist-packages/cv.py $VIRTUAL_ENV/lib/python2.7/site-packages/cv.py
+else
+    ln -s /usr/local/lib/python2.7/site-packages/cv2.so $VIRTUAL_ENV/lib/python2.7/site-packages/cv2.so;
+    ln -s /usr/local/lib/python2.7/site-packages/cv.py $VIRTUAL_ENV/lib/python2.7/site-packages/cv.py
+fi
+
 echo "OpenCV" $version "ready to be used"
