@@ -4,13 +4,18 @@ before_install:
     - sudo apt-get update
     - sudo apt-get install python-opencv
     - sudo dpkg -L python-opencv
+    - echo -e "Host *\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
 
 install:
-    - pip install --pre -r requirements.txt
-    - shovel test.fetch_videos
+    - "pip install --pre -r requirements.txt"
+    - "python setup.py develop"
+    - "shovel test.fetch_videos"
 
 python:
     - "2.7"
+
+notifications:
+    email: false
 
 script:
     - shovel test.all_overlaps
