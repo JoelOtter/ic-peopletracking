@@ -35,8 +35,10 @@ class MOSSE:
     # Initialise new MOSSE tracker.
     #   target_rect: surrounding co-ordinates of initial rectangle to track
     def __init__(self, frame, target_rect, eps=1e-5):
+        self.same = 0
         self.bad_count = 0
         self.eps = eps
+        self.dy, self.dx = 0, 0
 
         (
             self
@@ -110,6 +112,7 @@ class MOSSE:
         self.last_resp, (dx, dy), self.psr = self.correlate(img)
         self.good = self.psr > 8.0
         if not self.good:
+            self.bad_count += 1
             return
 
         x, y = self.position
@@ -160,7 +163,6 @@ class MOSSE:
         if self.good:
             cv2.circle(vis, (int(x), int(y)), 2, (0, 0, 255), -1)
         else:
-            self.bad_count += 1
             cv2.line(vis, (x1, y1), (x2, y2), (0, 0, 255))
             cv2.line(vis, (x2, y1), (x1, y2), (0, 0, 255))
         draw_str(vis, (x1, y2 + 16), 'PSR: %.2f' % self.psr)

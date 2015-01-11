@@ -3,54 +3,118 @@ import cv2
 from track.mosse import MOSSE
 
 
-def _setup_background_subtractor():
-    back_sub = cv2.BackgroundSubtractorMOG2()
-    back_sub.setDouble('nShadowDetection', 0)
-    back_sub.setDouble('history', 25)
-    return back_sub
+# Returns true is a is a bound that lies within b.
+def is_within(a, b):
+    ax, ay, aw, ah = a
+    bx, by, bw, bh = b
+
+    return (bx <= ax) & (ax + aw <= bx + bw) &\
+           (by <= ay) & (ay + ah <= by + bh)
 
 
-class RectSelector:
-    def __init__(self, win, callback):
-        self.win = win
-        self.callback = callback
-        cv2.setMouseCallback(win, self.onmouse)
-        self.drag_start = None
-        self.drag_rect = None
+class HumanTracker:
 
-    def onmouse(self, event, x, y, flags, param):
-        x, y = np.int16([x, y])
+    def __init__(self, height_width_ratio=3, learning_rate=0.005):
 
-        if event == cv2.EVENT_LBUTTONDOWN:
-            self.drag_start = (x, y)
-        if self.drag_start:
-            if flags & cv2.EVENT_FLAG_LBUTTON:
-                xo, yo = self.drag_start
-                x0, y0 = np.minimum([xo, yo], [x, y])
-                x1, y1 = np.maximum([xo, yo], [x, y])
-                self.drag_rect = None
-                if x1 - x0 > 0 and y1 - y0 > 0:
-                    self.drag_rect = (x0, y0, x1, y1)
-            else:
-                rect = self.drag_rect
-                self.drag_start = None
-                self.drag_rect = None
-                if rect:
-                    self.callback(rect)
+        """
+        Parameters
+        ----------
+        height_width_ratio: float, optional
+        If this is set to N, then will discount all bounds that do not satisfy
+        height > N * width.
 
-    def draw(self, vis):
-        if not self.drag_rect:
-            return False
-        x0, y0, x1, y1 = self.drag_rect
-        cv2.rectangle(vis, (x0, y0), (x1, y1), (0, 255, 0), 2)
-        return True
+        learning_rate: float, optional
+        Rate at which background changes are assimilated into the background
+        average.
+        """
 
-    @property
-    def dragging(self):
-        return self.drag_rect is not None
+        self.learning_rate = learning_rate
+        self.height_width_ratio = height_width_ratio
+
+        (
+            self
+            .init_bg_sub()
+            .init_hog()
+        )
+
+    def init_bg_sub(self):
+        self.bg_sub = cv2.BackgroundSubtractorMOG2()
+        self.bg_sub.setDouble('nShadowDetection', 0)
+        self.bg_sub.setDouble('history', 25)
+
+        return self
+
+    def init_hog(self):
+        self.hog = cv2.HOGDescriptor()
+        self.hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
+
+    def get_human_bounds(self, frame, ignore_positions=[]):
+
+        """
+        Parameters
+        ----------
+        ignore_positions: list of (x,y), optional
+        An optional filter before HOG detection. Filters candidate bounds to
+        remove any that cover any of these x,y co-ordinates.
+        """
+
+        bounds = self.get_distinct_contour_bounds(frame)
+        bounds = filter(lambda b: b[3] > self.height_width_ratio * b[2], bounds)
+
+        # TODO
+
+        return bounds
+
+    def get_distinct_contour_bounds(self, frame):
+        bounds = self.get_all_contour_bounds(frame)
+        bounds.sort(key=lambda b: b[2] * b[3])
+
+        # Remove all bounds that are within other bounds
+        i = 0
+        while i + 1 < len(bounds):
+            for j in xrange(len(bounds) - 1, i, -1):
+                if is_within(bounds[i], bounds[j]):
+                    bounds.pop(i)
+                    break
+            i += 1
+
+        return bounds
+
+    # Runs background subtraction on the given frame to identify the areas of
+    # the frame that have altered over time. Returns bounded rectangles over
+    # those contours.
+    def get_all_contour_bounds(self, frame):
+        frameblur = cv2.blur(frame, (5, 5))
+        fg_mask = self.bg_sub.apply(frameblur, self.learning_rate)
+
+        contours, hier = cv2.findContours(fg_mask, cv2.RETR_EXTERNAL,
+                                          cv2.CHAIN_APPROX_SIMPLE)
+
+        return map(cv2.boundingRect, contours)
+
+
+class Track:
+
+    def __init__(self, video_src, paused=False, display=False):
+        self.cap = cv2.VideoCapture(video_src)
+        self.frame = self.next_frame()
+        self.trackers = []
+        self.paused = paused
+
+        if display: cv2.imshow('frame', self.frame)
+
+    def next_frame(self):
+        _, frame = self.cap.read()
+        return frame
+
+    def onrect(self, rect):
+        frame_gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
+        tracker = MOSSE(frame_gray, rect)
+        self.trackers.append(tracker)
 
 
 class App:
+
     def __init__(self, video_src, paused=False):
         self.cap = cv2.VideoCapture(video_src)
         _, self.frame = self.cap.read()
@@ -65,7 +129,7 @@ class App:
         self.trackers.append(tracker)
 
     def run(self):
-        back_sub = _setup_background_subtractor()
+        human_tracker = HumanTracker()
         hog = cv2.HOGDescriptor()
         hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector()
                            )
@@ -73,18 +137,9 @@ class App:
             if not self.paused:
                 ret, self.frame = self.cap.read()
                 self.frame = cv2.resize(self.frame, (854, 480))
-                # cv2.rectangle(self.frame, (400, 0), (450, 480),
-                # (0, 255, 255), -1)
                 if not ret:
                     break
-                # contour code
-                frameblur = cv2.blur(self.frame, (5, 5))
-                # Learning rate at 0.005 to increase response to still humans
-                fgmask = back_sub.apply(frameblur, learningRate=0.005)
-                contours, hier = cv2.findContours(fgmask, cv2.RETR_EXTERNAL,
-                                                  cv2.CHAIN_APPROX_SIMPLE)
-                bounds = map(cv2.boundingRect, contours)
-
+                bounds = human_tracker.get_human_bounds(self.frame)
                 frame_gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
                 for bound in bounds:
                     bx, by, bw, bh = bound
@@ -145,7 +200,6 @@ class App:
                 self.paused = not self.paused
             if ch == ord('c'):
                 self.trackers = []
-
 
 if __name__ == '__main__':
     print __doc__
