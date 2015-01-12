@@ -16,6 +16,7 @@ class Tracker:
         self.tween = tween
         self.mosse_tolerance = mosse_tolerance
 
+        self.frame_count = 0
         self.trackers = []
         self.contours = ContourDetector(2)
         self.hog = HOGDetector()
@@ -27,6 +28,8 @@ class Tracker:
 
     def next_frame(self):
         ret, frame = self.cap.read()
+        self.frame_count += 1
+
         if not ret: return None
 
         self.frame = cv2.resize(frame, (853, 480))
@@ -39,11 +42,29 @@ class Tracker:
         return self.frame
 
     def analyse(self):
+        tracking_data = []
         while self.paused or self.next_frame() is not None:
             if not self.paused:
                 self.analyse_frame()
                 self.update_trackers()
+                tracking_data.append(self.frame_state())
             if self.display: self.draw_and_wait()
+        return tracking_data
+
+    def frame_state(self):
+        rectangles = []
+        for i, tracker in enumerate(self.trackers):
+            x, y, w, h = tracker.bound
+            rectangles.append({
+                'id': chr(ord('A') + i),
+                'x': x, 'y': y,
+                'width': w, 'height': h
+            })
+
+        return {
+            'frame': self.frame_count,
+            'rectangles': rectangles
+        }
 
     def analyse_frame(self):
         bounds_not_currently_tracked = remove_bounds_containing(

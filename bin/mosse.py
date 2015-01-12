@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse
+import json
 from track.track import Tracker
 
 
@@ -18,6 +19,9 @@ parser.add_argument('--display-video',
 parser.add_argument('--paused',
                     help='start the display paused',
                     action='store_true')
+parser.add_argument('--dump-json',
+                    help='dumps json to standard out',
+                    action='store_true')
 
 args = parser.parse_args()
 
@@ -27,5 +31,7 @@ tracker = Tracker(
     paused=bool(args.display_video) & bool(args.paused)
 )
 
-tracker.analyse()
+data = tracker.analyse()
+if args.dump_json:
+    print json.dumps(data)
 
