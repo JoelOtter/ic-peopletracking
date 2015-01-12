@@ -21,7 +21,6 @@ parser.add_argument('--paused',
 
 args = parser.parse_args()
 
-print args
 tracker = Tracker(
     args.video,
     display=bool(args.display_video),

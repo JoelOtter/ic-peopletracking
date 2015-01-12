@@ -32,11 +32,24 @@ def draw_str(dst, (x, y), s):
 
 class MOSSE:
 
-    # Initialise new MOSSE tracker.
-    #   target_rect: surrounding co-ordinates of initial rectangle to track
-    def __init__(self, frame, target_rect, eps=1e-5):
+    def __init__(self, frame, target_rect, learning_rate=0.125, eps=1e-5):
+
+        """
+        Parameters
+        ----------
+        frame: opencv frame instance
+        Initial frame that contains target.
+
+        target_rect: (x1, y1, x2, y2) co-ords
+        Defines the position of the target in the frame.
+
+        learning_rate: float, optional
+        Rate at which filter should adapt to changes in target.
+        """
+
         self.same = 0
         self.bad_count = 0
+        self.learning_rate = learning_rate
         self.eps = eps
         self.dy, self.dx = 0, 0
 
@@ -107,7 +120,7 @@ class MOSSE:
 
     # Update tracker with the given new frame. Should a correlation succeed,
     # will update filters and adjust for new tracked position.
-    def update(self, frame, rate=0.125):
+    def update(self, frame):
         img = self.process_new_img(frame)
         self.last_resp, (dx, dy), self.psr = self.correlate(img)
         self.good = self.psr > 8.0
@@ -123,8 +136,8 @@ class MOSSE:
         A = cv2.dft(img, flags=cv2.DFT_COMPLEX_OUTPUT)
         H1 = cv2.mulSpectrums(self.G, A, 0, conjB=True)
         H2 = cv2.mulSpectrums(A, A, 0, conjB=True)
-        self.H1 = self.H1 * (1.0 - rate) + H1 * rate
-        self.H2 = self.H2 * (1.0 - rate) + H2 * rate
+        self.H1 = self.H1 * (1.0 - self.learning_rate) + H1 * self.learning_rate
+        self.H2 = self.H2 * (1.0 - self.learning_rate) + H2 * self.learning_rate
         self.update_kernel()
 
     # Assigns target image to the self.last_img memory field, returning the

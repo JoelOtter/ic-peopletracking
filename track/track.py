@@ -1,7 +1,11 @@
 import numpy as np
 import cv2
+
+from helpers import remove_bounds_containing
 from mosse import MOSSE
 from human_tracker import HumanTracker
+from contour_detector import ContourDetector
+from hog_detector import HOGDetector
 
 
 class Tracker:
@@ -12,18 +16,26 @@ class Tracker:
         self.tween = tween
         self.mosse_tolerance = mosse_tolerance
 
+        self.trackers = []
+        self.contours = ContourDetector(2)
+        self.hog = HOGDetector()
+
         self.cap = cv2.VideoCapture(video_src)
         self.next_frame()
-
-        self.trackers = []
-        self.human_tracker = HumanTracker()
 
         if display: cv2.imshow('frame', self.frame)
 
     def next_frame(self):
-        ret, self.frame = self.cap.read()
+        ret, frame = self.cap.read()
         if not ret: return None
+
+        self.frame = cv2.resize(frame, (853, 480))
+
+        self.available_bounds = self.contours.get_distinct_contour_bounds(self.frame)
+        self.available_bounds.sort(key=lambda b: b[2] * b[3], reverse=True)
+
         self.frame_gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
+
         return self.frame
 
     def analyse(self):
@@ -34,35 +46,22 @@ class Tracker:
             if self.display: self.draw_and_wait()
 
     def analyse_frame(self):
-        for bound in self.human_tracker.get_human_bounds(
-            self.frame,
+        bounds_not_currently_tracked = remove_bounds_containing(
+            self.available_bounds,
             map(lambda tracker: tracker.position, self.trackers)
-        ):
-            self.add_tracker(bound)
+        )
 
-    # Adds a new tracker with the given bound to the collection.
-    def add_tracker(self, bound):
-        bx, by, bw, bh = bound
-        pad_w = int(0.2 * bw)
-        pad_h = int(0.1 * bh)
-
-        x1 = max(0, bx - pad_w)
-        x2 = max(0, bx + bw + pad_w)
-        y1 = max(0, by - pad_h)
-        y2 = max(0, by + bh + pad_h)
-
-        cv2.rectangle(self.frame, (x1, y1), (x2, y2), (0, 255, 0), 3)
-
-        tracker = MOSSE(self.frame_gray, (x1, y1, x2, y2))
-        self.trackers.append(tracker)
+        for bound in self.hog.select_human_bounds(self.frame, bounds_not_currently_tracked):
+            tracker = HumanTracker(self.frame_gray, bound)
+            self.trackers.append(tracker)
 
     # Send new frame to all trackers, allowing position adjustments. If any
     # trackers have now exceeded limit on bad count, remove them from the
     # collection.
     def update_trackers(self):
         for tracker in self.trackers[:]:
-            tracker.update(self.frame_gray)
-            if tracker.bad_count > self.mosse_tolerance:
+            tracker.update(self.frame_gray, self.available_bounds)
+            if tracker.error_score() > self.mosse_tolerance:
                 self.trackers.remove(tracker)
 
     def draw_and_wait(self):
@@ -76,12 +75,6 @@ class Tracker:
 
             cv2.imshow('frame', frame)
 
-        # Legacy display. Leaving in for quick reference if required in debug.
-        """
-        if len(self.trackers) > 0:
-            cv2.imshow('tracker state', self.trackers[-1].state_vis)
-        """
-
         key = cv2.waitKey(self.tween)
 
         if key == ord(' '):
@@ -89,5 +82,10 @@ class Tracker:
 
         if key == ord('c'):
             self.trackers = []
+
+    def draw_contours(self, frame):
+        for bound in self.available_bounds:
+            x, y, w, h = bound
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0))
 
 
