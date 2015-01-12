@@ -58,7 +58,10 @@ class ContourDetector:
     def get_all_contour_bounds(self, frame):
         frameblur = cv2.blur(frame, (5, 5))
         fg_mask = self.bg_sub.apply(frameblur, self.learning_rate)
+
+        """
         cv2.imshow('bgsub', fg_mask)
+        """
 
         contours, hier = cv2.findContours(fg_mask, cv2.RETR_EXTERNAL,
                                           cv2.CHAIN_APPROX_SIMPLE)
