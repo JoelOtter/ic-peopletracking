@@ -3,11 +3,11 @@ import json
 
 
 # Generates frame overlap data given a video path and JSON path
-def generate_frame_overlaps(video, jsonfile):
-    generated_json = json.loads(track.JSON_from_video(video))
-    expected_json = json.load(open(jsonfile, 'r'))
+def generate_frame_overlaps(actual_json_file, exp_json_file):
+    actual_json = json.load(open(actual_json_file, 'r'))
+    expected_json = json.load(open(exp_json_file, 'r'))
 
-    common_frames = _match_common_frames(expected_json, generated_json)
+    common_frames = _match_common_frames(expected_json, actual_json)
     return _generate_overlap_pcts(common_frames)
 
 
