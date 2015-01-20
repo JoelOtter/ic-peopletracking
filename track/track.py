@@ -10,11 +10,13 @@ from hog_detector import HOGDetector
 
 class Tracker:
 
-    def __init__(self, video_src, tween=10, mosse_tolerance=10, paused=False, display=False):
+    def __init__(self, video_src, height=0, width=0, tween=10, mosse_tolerance=10,
+                 paused=False, display=False):
         self.display = display
         self.paused = paused
         self.tween = tween
         self.mosse_tolerance = mosse_tolerance
+        self.end = False
 
         self.frame_count = 0
         self.trackers = []
@@ -22,17 +24,26 @@ class Tracker:
         self.hog = HOGDetector()
 
         self.cap = cv2.VideoCapture(video_src)
+
+        self.height = height or self.cap.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT)
+        self.width = width or self.cap.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH)
+
+        self.cap.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, self.height)
+        self.cap.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, self.width)
+
         self.next_frame()
 
-        if display: cv2.imshow('frame', self.frame)
+        if display:
+            cv2.imshow('frame', self.frame)
 
     def next_frame(self):
         ret, frame = self.cap.read()
         self.frame_count += 1
 
-        if not ret: return None
+        if not ret:
+            return None
 
-        self.frame = cv2.resize(frame, (853, 480))
+        self.frame = frame
 
         self.available_bounds = self.contours.get_distinct_contour_bounds(self.frame)
         self.available_bounds.sort(key=lambda b: b[2] * b[3], reverse=True)
@@ -43,12 +54,13 @@ class Tracker:
 
     def analyse(self):
         tracking_data = []
-        while self.paused or self.next_frame() is not None:
+        while self.paused or self.next_frame() is not None and not self.end:
             if not self.paused:
                 self.analyse_frame()
                 self.update_trackers()
                 tracking_data.append(self.frame_state())
-            if self.display: self.draw_and_wait()
+            if self.display:
+                self.draw_and_wait()
         return tracking_data
 
     def frame_state(self):
@@ -104,9 +116,13 @@ class Tracker:
         if key == ord('c'):
             self.trackers = []
 
+        if key == ord('b'):
+            self.countours.init_bg_sub()
+
+        if key == ord('q'):
+            self.end = True
+
     def draw_contours(self, frame):
         for bound in self.available_bounds:
             x, y, w, h = bound
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0))
-
-
