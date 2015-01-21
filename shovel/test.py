@@ -1,9 +1,10 @@
 import os
 import re
 import sys
+import json
 from subprocess import call, check_output
 from shovel import task
-from track import test
+from track import test, Tracker
 
 VM_CONF = {
     'host': 'cvm-g1436217.doc.ic.ac.uk',
@@ -75,13 +76,9 @@ def all_overlaps():
 
     for f in test_files:
         video_file = f[:-4] + 'mp4'
-        old_stdout = sys.stdout
-        sys.stdout = open(os.devnull, 'w')
-        try:
-            overlap_pcts = test.generate_frame_overlaps(video_file, f)
-        finally:
-            sys.stdout.close()
-            sys.stdout = old_stdout
+        expected_data = json.load(open(f, 'r'))
+        actual_data = Tracker(video_file, 853, 480).analyse()
+        overlap_pcts = test.generate_frame_overlaps(actual_data, expected_data)
         avg = round((sum(overlap_pcts) / len(overlap_pcts)), 1)
         name = '/'.join(f[:-5].split('/')[-2:])
         if (avg < 50):
@@ -90,4 +87,5 @@ def all_overlaps():
         else:
             linestart = GREEN + TICK
         print linestart + ' ' + str(avg) + '%' + ' ' + name + ENDC
+
     sys.exit(fails)
