@@ -5,19 +5,17 @@ from track import test
 parser = argparse.ArgumentParser(
     description='Compare tracking data against expected test')
 
-parser.add_argument('video',
-                    metavar='videofile',
-                    help='target video file'
+parser.add_argument('actual',
+                    help='actual json readings'
                     )
 
 parser.add_argument('expected',
-                    metavar='jsonfile',
                     help='expected json readings'
                     )
 
 args = parser.parse_args()
 
-overlap_pcts = test.generate_frame_overlaps(args.video, args.expected)
+overlap_pcts = test.generate_frame_overlaps(args.actual, args.expected)
 
 print """
 Overlap Percentages (pct of expected rectangle covered)

@@ -1,95 +1,128 @@
+import numpy as np
 import cv2
-import json
+
+from helpers import remove_bounds_containing
+from mosse import MOSSE
+from human_tracker import HumanTracker
+from contour_detector import ContourDetector
+from hog_detector import HOGDetector
 
 
-def _setup_capture(source):
-    return cv2.VideoCapture(source)
+class Tracker:
 
+    def __init__(self, video_src, height=0, width=0, tween=10, mosse_tolerance=10,
+                 paused=False, display=False):
+        self.display = display
+        self.paused = paused
+        self.tween = tween
+        self.mosse_tolerance = mosse_tolerance
+        self.end = False
 
-def _setup_background_subtractor():
-    back_sub = cv2.BackgroundSubtractorMOG2()
-    back_sub.setDouble('nShadowDetection', 0)
-    back_sub.setDouble('history', 25)
-    return back_sub
+        self.frame_count = 0
+        self.trackers = []
+        self.contours = ContourDetector(2)
+        self.hog = HOGDetector()
 
+        self.cap = cv2.VideoCapture(video_src)
 
-def _bigger_box(b1, b2):
-    b1x, b1y, b1w, b1h = b1
-    b2x, b2y, b2w, b2h = b2
-    if b1w * b1h > b2w * b2h:
-        return b1
-    else:
-        return b2
+        self.height = height or self.cap.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT)
+        self.width = width or self.cap.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH)
 
+        self.cap.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, self.height)
+        self.cap.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, self.width)
 
-def JSON_from_video(source, width=0, height=0, show_images=False):
+        self.next_frame()
 
-    def show_image(name, image):
-        if show_images:
-            cv2.imshow(name, image)
+        if display:
+            cv2.imshow('frame', self.frame)
 
-    cap = _setup_capture(source)
-
-    def resize(frame, width, height):
-        if height == 0 and width == 0:
-            return frame
-
-        feed_height = float(cap.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT))
-        feed_width = float(cap.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH))
-
-        if height == 0:
-            height = feed_height * width / feed_width
-            height = int(height)
-        if width == 0:
-            width = feed_width * height / feed_height
-            width = int(width)
-
-        return cv2.resize(frame, (width, height))
-
-    back_sub = _setup_background_subtractor()
-    frame_no = 0
-    frames = []
-    while(True):
-        ret, frame = cap.read()
+    def next_frame(self):
+        ret, frame = self.cap.read()
+        self.frame_count += 1
 
         if not ret:
-            break
+            return None
 
-        frame = resize(frame, width, height)
+        self.frame = frame
 
-        frameblur = cv2.blur(frame, (5, 5))
-        fgmask = back_sub.apply(frameblur, learningRate=0.001)
+        self.available_bounds = self.contours.get_distinct_contour_bounds(self.frame)
+        self.available_bounds.sort(key=lambda b: b[2] * b[3], reverse=True)
 
-        show_image('contours', fgmask)
+        self.frame_gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
 
-        contours, hier = cv2.findContours(fgmask, cv2.RETR_EXTERNAL,
-                                          cv2.CHAIN_APPROX_SIMPLE)
+        return self.frame
 
-        bounds = map(cv2.boundingRect, contours)
+    def analyse(self):
+        tracking_data = []
+        while self.paused or self.next_frame() is not None and not self.end:
+            if not self.paused:
+                self.analyse_frame()
+                self.update_trackers()
+                tracking_data.append(self.frame_state())
+            if self.display:
+                self.draw_and_wait()
+        return tracking_data
 
-        if bounds:
-            frame_data = {}
-            frame_data['frame'] = frame_no
-            bx, by, bw, bh = reduce(_bigger_box, bounds)
-            cv2.rectangle(frame, (bx, by), ((bx + bw), (by + bh)),
-                          (0, 255, 0), 3)
-            frame_data['rectangles'] = [{'id': '',
-                                         'x': bx,
-                                         'y': by,
-                                         'width': bw,
-                                         'height': bh}]
-            print frame_data
+    def frame_state(self):
+        rectangles = []
+        for i, tracker in enumerate(self.trackers):
+            x, y, w, h = tracker.bound
+            rectangles.append({
+                'id': chr(ord('A') + i),
+                'x': x, 'y': y,
+                'width': w, 'height': h
+            })
 
-            frames.append(frame_data)
+        return {
+            'frame': self.frame_count,
+            'rectangles': rectangles
+        }
 
-        show_image('input', frame)
-        frame_no += 1
+    def analyse_frame(self):
+        bounds_not_currently_tracked = remove_bounds_containing(
+            self.available_bounds,
+            map(lambda tracker: tracker.position, self.trackers)
+        )
 
-        if show_images:
-            k = cv2.waitKey(1) & 0xff
-            if k == 27:
-                break
+        for bound in self.hog.select_human_bounds(self.frame, bounds_not_currently_tracked):
+            tracker = HumanTracker(self.frame_gray, bound)
+            self.trackers.append(tracker)
 
-    cap.release()
-    cv2.destroyAllWindows()
-    return json.dumps(frames)
+    # Send new frame to all trackers, allowing position adjustments. If any
+    # trackers have now exceeded limit on bad count, remove them from the
+    # collection.
+    def update_trackers(self):
+        for tracker in self.trackers[:]:
+            tracker.update(self.frame_gray, self.available_bounds)
+            if tracker.error_score() > self.mosse_tolerance:
+                self.trackers.remove(tracker)
+
+    def draw_and_wait(self):
+
+        # If the program is currently paused, then there is no need to redraw
+        # any trackers as they will not have changed.
+        if not self.paused:
+            frame = self.frame.copy()
+            for tracker in self.trackers:
+                tracker.draw_state(frame)
+
+            cv2.imshow('frame', frame)
+
+        key = cv2.waitKey(self.tween)
+
+        if key == ord(' '):
+            self.paused = not self.paused
+
+        if key == ord('c'):
+            self.trackers = []
+
+        if key == ord('b'):
+            self.countours.init_bg_sub()
+
+        if key == ord('q'):
+            self.end = True
+
+    def draw_contours(self, frame):
+        for bound in self.available_bounds:
+            x, y, w, h = bound
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0))

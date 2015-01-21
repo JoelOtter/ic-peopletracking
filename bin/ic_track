@@ -1,6 +1,7 @@
 #!/usr/bin/env python
-import track
 import argparse
+import json
+from track.track import Tracker
 
 
 def get_type_error(text):
@@ -40,23 +41,30 @@ def check_video(file):
         raise argparse.ArgumentTypeError("Expected .avi or .mp4 video file")
     return file
 
+
 parser = argparse.ArgumentParser(
-    description='Get JSON string of the locations of a person in a video.')
-parser.add_argument('-l', '--live', type=check_positive,
-                    help='index for webcam, starts from 0')
+    description='Runs tracking analysis of humans in the given video')
+
 parser.add_argument('-v', '--video', type=check_video,
                     help='path to video file')
-parser.add_argument('-f', '--file',
-                    help='target output file'
-                    )
+parser.add_argument('-l', '--live', type=check_positive,
+                    help='index for webcam, starts from 0')
 parser.add_argument('--height', type=check_dimension,
-                    help='resize feed to given height'
-                    )
+                    help='resize feed to given height')
 parser.add_argument('--width', type=check_dimension,
-                    help='resize feed to given width'
-                    )
-parser.add_argument('--show_images', action='store_true', default=False,
-                    help='show image with boxes surrounding detected people.')
+                    help='resize feed to given width')
+parser.add_argument('--display-video',
+                    help='displays a graphical display of tracking',
+                    action='store_true',
+                    default=False)
+parser.add_argument('--paused',
+                    help='start the display paused',
+                    action='store_true',
+                    default=False)
+parser.add_argument('--dump-json',
+                    help='dumps json to standard out',
+                    action='store_true')
+
 args = parser.parse_args()
 
 if args.live is None and args.video is None:
@@ -65,10 +73,14 @@ if args.live is None and args.video is None:
 if args.live is not None and args.video is not None:
     parser.error("Specify either live feed or video")
 
-json = track.JSON_from_video(args.video or args.live, args.width or 0,
-                             args.height or 0, show_images=args.show_images)
+tracker = Tracker(
+    args.video or args.live,
+    width=args.width or 0,
+    height=args.height or 0,
+    display=args.display_video,
+    paused=args.display_video & args.paused
+)
 
-if args.file:
-    f = open(args.file, 'w')
-    f.write(json)
-    f.close()
+data = tracker.analyse()
+if args.dump_json:
+    print json.dumps(data)
