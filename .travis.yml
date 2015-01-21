@@ -1,0 +1,28 @@
+language: python
+
+before_install:
+    # opencv
+    - chmod +x install_opencv.sh
+    - ./install_opencv.sh
+    # ssh
+    - echo -e "Host *\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
+    - echo -e "$SSH_PUBLIC_KEY" > ~/.ssh/id_rsa.pub
+    - chmod 700 ~/.ssh
+    - chmod 600 ~/.ssh/id_rsa
+    - eval `ssh-agent -s`
+    - ssh-add ~/.ssh/id_rsa
+
+install:
+    - "pip install --pre -r requirements.txt -q"
+    - "python setup.py develop"
+    - "shovel test.fetch_videos"
+
+python:
+    - "2.7"
+
+notifications:
+    email: false
+    slack: ic-peopletracking:aEF1UIPlcDEn7NRzu7YEl88H
+
+script:
+    - shovel test.all_overlaps
